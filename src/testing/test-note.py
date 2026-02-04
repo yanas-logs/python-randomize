@@ -3,7 +3,7 @@ import random
 import os
 from music21 import note
 
-DATA_PATH = os.path.join('data', 'note.json')
+DATA_PATH = os.path.join('data', 'note', 'note.json')
 
 def load_notes():
     with open(DATA_PATH, 'r') as file:
