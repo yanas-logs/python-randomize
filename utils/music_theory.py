@@ -1,6 +1,7 @@
 """
 Music Theory Utilities
 Provides functions for music theory, chords, scales, etc.
+Enhanced with Sharp and Flat support.
 """
 
 import random
@@ -11,8 +12,18 @@ import numpy as np
 class MusicTheory:
     """Utility class for music theory calculations"""
     
-    # Chromatic scale
-    NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    # Chromatic scale using Sharps
+    NOTES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    
+    # Chromatic scale using Flats (for normalization and alternate naming)
+    NOTES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
+    
+    # Mapping for normalization: converts any accidental to its index (0-11)
+    # This handles both 'A#' and 'Bb' correctly.
+    NOTE_MAP = {
+        'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'FB': 4,
+        'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11, 'CB': 11
+    }
     
     # Scale intervals (semitones from root)
     SCALES = {
@@ -60,17 +71,30 @@ class MusicTheory:
     }
     
     @classmethod
-    def note_to_midi(cls, note: str, octave: int = 4) -> int:
-        """Convert note name to MIDI note number"""
-        note_idx = cls.NOTES.index(note.upper())
+    def note_to_midi(cls, note_name: str, octave: int = 4) -> int:
+        """Convert note name (C, C#, Db, etc.) to MIDI note number"""
+        # Clean input: uppercase first letter, lowercase for accidental (if any)
+        formatted_note = note_name.capitalize()
+        
+        # Use NOTE_MAP to find the index regardless of sharp/flat notation
+        if formatted_note not in cls.NOTE_MAP:
+            raise ValueError(f"Invalid note name: {note_name}")
+            
+        note_idx = cls.NOTE_MAP[formatted_note]
         return (octave + 1) * 12 + note_idx
     
     @classmethod
-    def midi_to_note(cls, midi: int) -> Tuple[str, int]:
-        """Convert MIDI note number to note name and octave"""
+    def midi_to_note(cls, midi: int, prefer_flats: bool = False) -> Tuple[str, int]:
+        """
+        Convert MIDI note number to note name and octave.
+        Can prefer Sharp or Flat naming.
+        """
         octave = (midi // 12) - 1
         note_idx = midi % 12
-        return cls.NOTES[note_idx], octave
+        
+        # Select from either Sharp or Flat list
+        name_list = cls.NOTES_FLAT if prefer_flats else cls.NOTES_SHARP
+        return name_list[note_idx], octave
     
     @classmethod
     def midi_to_frequency(cls, midi: int) -> float:
@@ -93,13 +117,8 @@ class MusicTheory:
     
     @classmethod
     def parse_roman_numeral(cls, roman: str, key: str, is_minor: bool = False) -> Tuple[str, str]:
-        """
-        Parse Roman numeral chord notation.
-        Returns: (chord_root, chord_type)
-        """
+        """Parse Roman numeral chord notation."""
         progressions = cls.ROMAN_PROGRESSIONS_MINOR if is_minor else cls.ROMAN_PROGRESSIONS_MAJOR
-        
-        # Clean notation (e.g., Imaj7 -> I)
         base_roman = ''.join(c for c in roman if c in 'IViv')
         
         if base_roman not in progressions:
@@ -107,32 +126,25 @@ class MusicTheory:
         
         chord_type, semitones = progressions[base_roman]
         
-        # Override chord type if specified in notation
-        if 'maj7' in roman.lower():
-            chord_type = 'maj7'
-        elif 'min7' in roman.lower() or 'm7' in roman.lower():
-            chord_type = 'min7'
-        elif '7' in roman and 'maj7' not in roman.lower():
-            chord_type = '7'
-        elif 'maj' in roman.lower():
-            chord_type = 'maj'
-        elif 'min' in roman.lower() or 'm' in roman.lower():
-            chord_type = 'min'
+        if 'maj7' in roman.lower(): chord_type = 'maj7'
+        elif 'min7' in roman.lower() or 'm7' in roman.lower(): chord_type = 'min7'
+        elif '7' in roman and 'maj7' not in roman.lower(): chord_type = '7'
+        elif 'maj' in roman.lower(): chord_type = 'maj'
+        elif 'min' in roman.lower() or 'm' in roman.lower(): chord_type = 'min'
         
-        # Calculate chord root
-        key_idx = cls.NOTES.index(key.upper().replace('M', ''))
+        # Key normalization for calculation
+        key_formatted = key.capitalize()
+        key_idx = cls.NOTE_MAP[key_formatted]
+        
         chord_root_idx = (key_idx + semitones) % 12
-        chord_root = cls.NOTES[chord_root_idx]
+        # Default back to Sharp list for the root name
+        chord_root = cls.NOTES_SHARP[chord_root_idx]
         
         return chord_root, chord_type
     
     @classmethod
     def get_chord_progression(cls, progression: List[str], key: str, 
                              octave: int = 4, is_minor: bool = False) -> List[List[int]]:
-        """
-        Get chord progression as a list of chord MIDI numbers.
-        Example progression: ['Imaj7', 'IVmaj7', 'Vm7', 'IVmaj7']
-        """
         chords = []
         for roman in progression:
             chord_root, chord_type = cls.parse_roman_numeral(roman, key, is_minor)
@@ -143,58 +155,36 @@ class MusicTheory:
     @classmethod
     def generate_random_progression(cls, length: int = 4, key: str = 'C', 
                                    is_minor: bool = False) -> List[str]:
-        """Generate a random chord progression"""
-        progressions = cls.ROMAN_PROGRESSIONS_MINOR if is_minor else cls.ROMAN_PROGRESSIONS_MAJOR
-        
-        # Lo-fi friendly chords (jazzy flavor)
         preferred_chords = ['I', 'ii', 'IV', 'V', 'vi'] if not is_minor else ['i', 'iv', 'v', 'VI', 'VII']
-        
         progression = []
         for i in range(length):
             if i == 0:
-                # Start with the tonic
                 chord = 'i' if is_minor else 'I'
             elif i == length - 1:
-                # End with V or I
                 chord = random.choice(['V', 'I'] if not is_minor else ['v', 'i'])
             else:
                 chord = random.choice(preferred_chords)
             
-            # Add 7th for a lo-fi/jazzy feel
             if random.random() > 0.3:
                 chord += 'maj7' if chord.isupper() and 'V' not in chord else 'm7'
-            
             progression.append(chord)
-        
         return progression
     
     @classmethod
     def get_voicing(cls, chord_notes: List[int], voicing_type: str = 'close') -> List[int]:
-        """
-        Get different chord voicings.
-        voicing_type: 'close', 'open', 'drop2', 'shell'
-        """
-        if voicing_type == 'close':
-            return chord_notes
-        
+        if voicing_type == 'close': return chord_notes
         elif voicing_type == 'open':
-            # Spread the chord wider
             return [chord_notes[0], chord_notes[1] + 12, chord_notes[2] + 12]
-        
         elif voicing_type == 'drop2':
-            # Drop the second highest note down an octave
             if len(chord_notes) >= 3:
                 result = chord_notes.copy()
                 result[-2] -= 12
                 return sorted(result)
             return chord_notes
-        
         elif voicing_type == 'shell':
-            # Only root, 3rd, and 7th (for 7th chords)
             if len(chord_notes) >= 4:
                 return [chord_notes[0], chord_notes[1], chord_notes[3]]
             return chord_notes[:3]
-        
         return chord_notes
 
 
@@ -203,12 +193,8 @@ class RhythmGenerator:
     
     @staticmethod
     def generate_swing_timing(beats: int = 4, swing_ratio: float = 0.6) -> List[float]:
-        """
-        Generate swing timing (useful for lo-fi feel).
-        swing_ratio: 0.5 = straight, 0.66 = triplet swing
-        """
         timings = []
-        for i in range(beats * 2):  # 8th notes
+        for i in range(beats * 2):
             if i % 2 == 0:
                 timings.append(i * swing_ratio)
             else:
@@ -217,18 +203,15 @@ class RhythmGenerator:
     
     @staticmethod
     def humanize_timing(timings: List[float], amount: float = 0.02) -> List[float]:
-        """Add human-like micro-timing variations"""
         return [t + random.uniform(-amount, amount) for t in timings]
     
     @staticmethod
     def generate_velocity_curve(length: int, curve_type: str = 'crescendo') -> List[int]:
-        """Generate velocity curve for dynamics"""
         if curve_type == 'crescendo':
             return [int(60 + (i / length) * 40) for i in range(length)]
         elif curve_type == 'diminuendo':
             return [int(100 - (i / length) * 40) for i in range(length)]
         elif curve_type == 'random':
-            base = 70
-            return [base + random.randint(-20, 20) for _ in range(length)]
-        else:  # flat
+            return [70 + random.randint(-20, 20) for _ in range(length)]
+        else:
             return [80] * length
