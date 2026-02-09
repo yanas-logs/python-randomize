@@ -1,10 +1,16 @@
 import json
 import random
 import os
+import sys
 from music21 import note
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.abspath(os.path.join(BASE_DIR, '..', '..', 'data', 'note', 'note.json'))
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', '..'))
+sys.path.append(PROJECT_ROOT)
+
+from utils.music_theory import MusicTheory
+
+DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'note', 'note.json')
 
 def load_notes():
     with open(DATA_PATH, 'r') as file:
@@ -14,21 +20,24 @@ if __name__ == "__main__":
     notes_data = load_notes()
     
     random_key = random.choice(list(notes_data.keys()))
-    accidental = random.choice(['', '#', '-'])
+    
+    accidental = random.choice(['', '#', 'b'])
     random_octave = random.randint(2, 6)
-
-    if (random_key == 'E' and accidental == '#') or \
-       (random_key == 'F' and accidental == '-') or \
-       (random_key == 'B' and accidental == '#') or \
-       (random_key == 'C' and accidental == '-'):
-        accidental = '' 
     
-    full_note_name = f"{random_key}{accidental}{random_octave}"
-    selector = note.Note(full_note_name)
+    note_input = f"{random_key}{accidental}"
     
-    print(f"Result : {random_key}")
-    print(f"Accidental : {accidental if accidental else 'Natural'}")
-    print(f"Pitch : {selector.nameWithOctave}")
-    print(f"Frequency : {selector.pitch.frequency} Hz")
-    
-    selector.show('text')
+    try:
+        midi_val = MusicTheory.note_to_midi(note_input, random_octave)
+        
+        clean_name, octave = MusicTheory.midi_to_note(midi_val)
+        
+        selector = note.Note(f"{clean_name}{octave}")
+        
+        print(f"Input Key  : {note_input}")
+        print(f"Normalized : {selector.nameWithOctave}")
+        print(f"Frequency  : {selector.pitch.frequency:.2f} Hz")
+        
+        selector.show('text')
+        
+    except ValueError as e:
+        print(f"Error: {e}")
