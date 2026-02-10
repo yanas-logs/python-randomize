@@ -6,7 +6,7 @@ Enhanced with Sharp and Flat support.
 
 import random
 from typing import List, Tuple, Dict
-import numpy as np
+# import numpy as np
 
 
 class MusicTheory:
