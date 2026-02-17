@@ -23,10 +23,10 @@ if __name__ == "__main__":
         is_minor = random.choice([True, False])
         scale_type = 'minor' if is_minor else 'major'
         
-        print(f"--- Composition: {root_key} {scale_type.capitalize()} ---")
+        print(f"--- Composition: {root_key} {scale_type.capitalize()} with Drums ---")
 
         song = stream.Score()
-        song.metadata = metadata.Metadata(title=f"Full Composition {root_key}")
+        song.metadata = metadata.Metadata(title=f"Composition {root_key}")
         
         chord_part = stream.Part()
         chord_part.append(instrument.Piano())
@@ -35,46 +35,65 @@ if __name__ == "__main__":
         melody_part = stream.Part()
         melody_part.append(instrument.AcousticGuitar())
 
+        drum_part = stream.Part()
+        drum_part.append(instrument.Percussion())
+
         progression = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
         
         for symbol in progression:
             chord_root, chord_type = MusicTheory.parse_roman_numeral(symbol, root_key, is_minor)
-            
             midi_notes = MusicTheory.get_chord(chord_root, chord_type, octave=4)
             voiced_midi = MusicTheory.get_voicing(midi_notes, voicing_type='open')
             
             c = chord.Chord(voiced_midi)
             c.quarterLength = 4.0
-            c.volume.velocity = 70
+            c.volume.velocity = 60
             chord_part.append(c)
             
             current_bar_length = 0
             while current_bar_length < 4.0:
                 full_scale = MusicTheory.get_scale(root_key, scale_type, octave=5)
                 m_note = random.choice(full_scale)
-                
                 n_name, n_oct = MusicTheory.midi_to_note(m_note)
                 new_n = note.Note(f"{n_name}{n_oct}")
-                
                 dur = random.choice([0.5, 1.0])
                 if current_bar_length + dur > 4.0:
                     dur = 4.0 - current_bar_length
-                
                 new_n.quarterLength = dur
-                new_n.volume.velocity = random.randint(80, 110)
-                
+                new_n.volume.velocity = random.randint(70, 95)
                 melody_part.append(new_n)
                 current_bar_length += dur
 
+            for beat in range(8):
+                hi_hat = note.Note()
+                hi_hat.pitch.midi = 42
+                hi_hat.quarterLength = 0.5
+                hi_hat.volume.velocity = random.randint(40, 60)
+                
+                if beat == 0 or beat == 4:
+                    kick = note.Note()
+                    kick.pitch.midi = 36
+                    kick.quarterLength = 0.5
+                    kick.volume.velocity = 100
+                    drum_part.append(chord.Chord([hi_hat, kick]))
+                elif beat == 2 or beat == 6:
+                    snare = note.Note()
+                    snare.pitch.midi = 38
+                    snare.quarterLength = 0.5
+                    snare.volume.velocity = 85
+                    drum_part.append(chord.Chord([hi_hat, snare]))
+                else:
+                    drum_part.append(hi_hat)
+
         song.insert(0, chord_part)
         song.insert(0, melody_part)
+        song.insert(0, drum_part)
         
         output_file = os.path.join(PROJECT_ROOT, "full_composition.mid")
         song.write('midi', fp=output_file)
         
         print("-" * 40)
-        print(f"SUCCESS: Full song saved as {output_file}")
+        print(f"SUCCESS: Song with drums saved as {output_file}")
 
     except Exception as e:
         print(f"An error occurred: {e}")
-      
