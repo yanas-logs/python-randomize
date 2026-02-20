@@ -2,6 +2,7 @@ import json
 import random
 import sys
 import os
+import time
 from music21 import note, chord, stream, metadata, tempo, instrument
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -79,7 +80,17 @@ if __name__ == "__main__":
         song.insert(0, bass_part)
         song.insert(0, drum_part)
         
-        output_file = os.path.join(PROJECT_ROOT, "full_composition.mid")
+        OUTPUT_DIR = os.path.join(PROJECT_ROOT, "result")
+        if not os.path.exists(OUTPUT_DIR):
+            os.makedirs(OUTPUT_DIR)
+
+        # Format: ex. C_Major_20260220_210354
+        date_part = time.strftime("%Y%m%d")
+        time_part = time.strftime("%H%M%S")
+
+        filename = f"{root_key}_{scale_type.capitalize()}_{date_part}_{time_part}.mid"
+        output_file = os.path.join(OUTPUT_DIR, filename)
+        
         song.write('midi', fp=output_file)
         print(f"SUCCESS: Saved to {output_file}")
 
