@@ -7,7 +7,9 @@ from music21 import note, chord, stream, metadata, tempo, instrument
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', '..'))
+
 sys.path.append(PROJECT_ROOT)
+sys.path.append(BASE_DIR)
 
 from utils.music_theory import MusicTheory
 from test_bass import BassGenerator
@@ -84,11 +86,10 @@ if __name__ == "__main__":
         if not os.path.exists(OUTPUT_DIR):
             os.makedirs(OUTPUT_DIR)
 
-        # Format: ex. C_Major_20260220_210354
-        date_part = time.strftime("%Y%m%d")
-        time_part = time.strftime("%H%M%S")
-
-        filename = f"{root_key}_{scale_type.capitalize()}_{date_part}_{time_part}.mid"
+        # Format: ex. 20260101_111111_C_Major 
+        timestamp_full = time.strftime("%Y%m%d_%H%M%S")
+        
+        filename = f"{timestamp_full}_{root_key}_{scale_type.capitalize()}.mid"
         output_file = os.path.join(OUTPUT_DIR, filename)
         
         song.write('midi', fp=output_file)

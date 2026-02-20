@@ -1,3 +1,4 @@
+import random
 from music21 import note, instrument
 
 class BassGenerator:
