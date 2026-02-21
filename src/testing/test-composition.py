@@ -61,15 +61,34 @@ if __name__ == "__main__":
             
             # MELODY
             current_bar_length = 0
+
+            current_chord_midi = MusicTheory.get_chord(chord_root, chord_type, octave=5)
+            full_scale = MusicTheory.get_scale(root_key, scale_type, octave=5)
+
             while current_bar_length < 4.0:
-                full_scale = MusicTheory.get_scale(root_key, scale_type, octave=5)
-                m_note_midi = random.choice(full_scale)
+
+                # 70% from Chord Tones : 30% from Scale Tones
+                if random.random() < 0.7:
+                    m_note_midi = random.choice(current_chord_midi)
+                else:
+                    m_note_midi = random.choice(full_scale)
+                
                 n_name, n_oct = MusicTheory.midi_to_note(m_note_midi)
                 new_n = note.Note(f"{n_name}{n_oct}")
-                dur = random.choice([0.5, 1.0])
-                if current_bar_length + dur > 4.0: dur = 4.0 - current_bar_length
+
+                # Duration Variations
+                dur = random.choice([0.5, 1.0, 1.5]) 
+                if current_bar_length + dur > 4.0:
+                    dur = 4.0 - current_bar_length
+                
                 new_n.quarterLength = dur
-                new_n.volume.velocity = random.randint(70, 95)
+
+                # Simple Humanization 
+                if m_note_midi in current_chord_midi:
+                    new_n.volume.velocity = random.randint(85, 100)
+                else:
+                    new_n.volume.velocity = random.randint(70, 85)
+
                 melody_part.append(new_n)
                 current_bar_length += dur
 
