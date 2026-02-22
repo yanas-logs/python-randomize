@@ -57,7 +57,9 @@ if __name__ == "__main__":
             chord_part.append(c)
 
             # BASS 
-            bass_part.append(BassGenerator.generate_bass_part(chord_root))
+            bass_note = BassGenerator.generate_bass_part(chord_root)
+            bass_note.volume.velocity = random.randint(75, 90)
+            bass_part.append(bass_note)
             
             # MELODY
             current_bar_length = 0
@@ -94,6 +96,10 @@ if __name__ == "__main__":
 
             # DRUM 
             for drum_note in DrumGenerator.generate_standard_beat():
+                if drum_note.quarterLength == 0.5:
+                    drum_note.volume.velocity = random.randint(50, 80)
+                else:
+                    drum_note.volume.velocity = random.randint(80, 110)
                 drum_part.append(drum_note)
 
         song.insert(0, chord_part)
