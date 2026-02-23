@@ -3,7 +3,7 @@ import random
 import sys
 import os
 import time
-from music21 import note, chord, stream, metadata, tempo, instrument
+from music21 import stream, metadata, tempo, instrument
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', '..'))
@@ -14,6 +14,7 @@ sys.path.append(BASE_DIR)
 from utils.music_theory import MusicTheory
 from test_bass import BassGenerator
 from test_drum import DrumGenerator
+from structure_manager import StructureManager 
 
 def load_notes():
     with open(os.path.join(PROJECT_ROOT, 'data', 'note', 'note.json'), 'r') as file:
@@ -29,92 +30,44 @@ if __name__ == "__main__":
         print(f"--- Composition: {root_key} {scale_type.capitalize()} ---")
 
         song = stream.Score()
-        song.metadata = metadata.Metadata(title=f"Full Composition {root_key}")
+        song.metadata = metadata.Metadata(title=f"Modular Composition {root_key}")
         
-        chord_part = stream.Part()
-        chord_part.append(instrument.Piano())
-        chord_part.append(tempo.MetronomeMark(number=90))
-        
-        melody_part = stream.Part()
-        melody_part.append(instrument.AcousticGuitar())
+        full_chord = stream.Part()
+        full_melody = stream.Part()
+        full_bass = stream.Part()
+        full_drum = stream.Part()
 
-        bass_part = stream.Part()
-        bass_part.append(instrument.ElectricBass())
+        full_chord.append(instrument.Piano())
+        full_chord.append(tempo.MetronomeMark(number=90))
+        full_melody.append(instrument.AcousticGuitar())
+        full_bass.append(instrument.ElectricBass())
+        full_drum.append(instrument.Percussion())
 
-        drum_part = stream.Part()
-        drum_part.append(instrument.Percussion())
+        song_flow = ["intro", "verse", "chorus", "verse", "chorus", "outro"]
 
-        progression = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
-        
-        for symbol in progression:
-            chord_root, chord_type = MusicTheory.parse_roman_numeral(symbol, root_key, is_minor)
+        for section in song_flow:
+            print(f"Generating section: {section}...")
+            prog = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
             
-            # CHORD
-            midi_notes = MusicTheory.get_chord(chord_root, chord_type, octave=4)
-            c = chord.Chord(MusicTheory.get_voicing(midi_notes, voicing_type='open'))
-            c.quarterLength = 4.0
-            c.volume.velocity = 60
-            chord_part.append(c)
-
-            # BASS 
-            bass_note = BassGenerator.generate_bass_part(chord_root)
-            bass_note.volume.velocity = random.randint(75, 90)
-            bass_part.append(bass_note)
+             c_p, m_p, b_p, d_p = StructureManager.create_section(
+                section, prog, root_key, scale_type, MusicTheory, BassGenerator, DrumGenerator
+            )
             
-            # MELODY
-            current_bar_length = 0
+            for n in c_p: full_chord.append(n)
+            for n in m_p: full_melody.append(n)
+            for n in b_p: full_bass.append(n)
+            for n in d_p: full_drum.append(n)
 
-            current_chord_midi = MusicTheory.get_chord(chord_root, chord_type, octave=5)
-            full_scale = MusicTheory.get_scale(root_key, scale_type, octave=5)
-
-            while current_bar_length < 4.0:
-
-                # 70% from Chord Tones : 30% from Scale Tones
-                if random.random() < 0.7:
-                    m_note_midi = random.choice(current_chord_midi)
-                else:
-                    m_note_midi = random.choice(full_scale)
-                
-                n_name, n_oct = MusicTheory.midi_to_note(m_note_midi)
-                new_n = note.Note(f"{n_name}{n_oct}")
-
-                # Duration Variations
-                dur = random.choice([0.5, 1.0, 1.5]) 
-                if current_bar_length + dur > 4.0:
-                    dur = 4.0 - current_bar_length
-                
-                new_n.quarterLength = dur
-
-                # Simple Humanization 
-                if m_note_midi in current_chord_midi:
-                    new_n.volume.velocity = random.randint(85, 100)
-                else:
-                    new_n.volume.velocity = random.randint(70, 85)
-
-                melody_part.append(new_n)
-                current_bar_length += dur
-
-            # DRUM 
-            for drum_note in DrumGenerator.generate_standard_beat():
-                if drum_note.quarterLength == 0.5:
-                    drum_note.volume.velocity = random.randint(50, 80)
-                else:
-                    drum_note.volume.velocity = random.randint(80, 110)
-                drum_part.append(drum_note)
-
-        song.insert(0, chord_part)
-        song.insert(0, melody_part)
-        song.insert(0, bass_part)
-        song.insert(0, drum_part)
+        song.insert(0, full_chord)
+        song.insert(0, full_melody)
+        song.insert(0, full_bass)
+        song.insert(0, full_drum)
         
         OUTPUT_DIR = os.path.join(PROJECT_ROOT, "result")
-        if not os.path.exists(OUTPUT_DIR):
-            os.makedirs(OUTPUT_DIR)
+        if not os.path.exists(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
 
-        # Format: ex. 20260101_111111_C_Major 
-        timestamp_full = time.strftime("%Y%m%d_%H%M%S")
-        
-        filename = f"{timestamp_full}_{root_key}_{scale_type.capitalize()}.mid"
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        filename = f"{timestamp}_{root_key}_{scale_type.capitalize()}.mid"
         output_file = os.path.join(OUTPUT_DIR, filename)
         
         song.write('midi', fp=output_file)
