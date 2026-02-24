@@ -49,7 +49,7 @@ if __name__ == "__main__":
             print(f"Generating section: {section}...")
             prog = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
             
-             c_p, m_p, b_p, d_p = StructureManager.create_section(
+            c_p, m_p, b_p, d_p = StructureManager.create_section(
                 section, prog, root_key, scale_type, MusicTheory, BassGenerator, DrumGenerator
             )
             
