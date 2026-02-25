@@ -29,26 +29,33 @@ class StructureManager:
 
             if has_melody:
                 current_bar_length = 0
-                current_chord_midi = MusicTheory.get_chord(chord_root, chord_type, octave=5)
-                full_scale = MusicTheory.get_scale(root_key, scale_type, octave=5)
+                m_octave = 6 if section_type == "chorus" else 5
+                
+                current_chord_midi = MusicTheory.get_chord(chord_root, chord_type, octave=m_octave)
+                full_scale = MusicTheory.get_scale(root_key, scale_type, octave=m_octave)
                 
                 while current_bar_length < 4.0:
                     from music21 import note
-                    prob = 0.8 if section_type == "chorus" else 0.6
-                    if random.random() < prob:
+                    note_probability = 0.85 if section_type == "chorus" else 0.60
+                    
+                    if random.random() < note_probability:
                         m_note_midi = random.choice(current_chord_midi if random.random() < 0.7 else full_scale)
                         n_name, n_oct = MusicTheory.midi_to_note(m_note_midi)
                         new_n = note.Note(f"{n_name}{n_oct}")
                         
-                        dur = random.choice([0.5, 1.0]) if section_type == "verse" else random.choice([0.25, 0.5])
+                        if section_type == "chorus":
+                            dur = random.choice([0.25, 0.5, 1.0])
+                        else:
+                            dur = random.choice([0.5, 1.0, 1.5])
+                            
                         if current_bar_length + dur > 4.0: dur = 4.0 - current_bar_length
                         
                         new_n.quarterLength = dur
-                        new_n.volume.velocity = int(random.randint(80, 100) * velocity_multiplier)
+                        new_n.volume.velocity = int(random.randint(85, 105) * velocity_multiplier)
                         melody_part.append(new_n)
                         current_bar_length += dur
                     else:
-                        current_bar_length += 0.5 
+                        current_bar_length += 0.5
 
             if has_drums:
                 for drum_note in DrumGenerator.generate_standard_beat():
