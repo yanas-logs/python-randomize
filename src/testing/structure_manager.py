@@ -13,7 +13,7 @@ class StructureManager:
         has_melody = section_type in ["verse", "chorus"]
         has_drums = section_type != "outro"
 
-        for symbol in progression:
+        for index, symbol in enumerate(progression):
             chord_root, chord_type = MusicTheory.parse_roman_numeral(symbol, root_key, scale_type == 'minor')
             
             midi_notes = MusicTheory.get_chord(chord_root, chord_type, octave=4)
@@ -23,9 +23,16 @@ class StructureManager:
             c.volume.velocity = int(60 * velocity_multiplier)
             chord_part.append(c)
 
-            bass_note = BassGenerator.generate_bass_part(chord_root)
-            bass_note.volume.velocity = int(random.randint(75, 90) * velocity_multiplier)
-            bass_part.append(bass_note)
+            is_chorus_section = (section_type == "chorus")
+            bass_notes = BassGenerator.generate_bass_part(chord_root, is_chorus=is_chorus_section)
+            
+            if isinstance(bass_notes, list):
+                for b_n in bass_notes:
+                    b_n.volume.velocity = int(b_n.volume.velocity * velocity_multiplier)
+                    bass_part.append(b_n)
+            else:
+                bass_notes.volume.velocity = int(random.randint(75, 90) * velocity_multiplier)
+                bass_part.append(bass_notes)
 
             if has_melody:
                 current_bar_length = 0
@@ -58,7 +65,14 @@ class StructureManager:
                         current_bar_length += 0.5
 
             if has_drums:
-                for drum_note in DrumGenerator.generate_standard_beat():
+                is_last_bar = (index == len(progression) - 1)
+                
+                if is_last_bar and section_type in ["verse", "chorus"]:
+                    drum_notes = DrumGenerator.generate_fill()
+                else:
+                    drum_notes = DrumGenerator.generate_standard_beat()
+
+                for drum_note in drum_notes:
                     drum_note.volume.velocity = int(drum_note.volume.velocity * velocity_multiplier)
                     drum_part.append(drum_note)
 
