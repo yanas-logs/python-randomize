@@ -24,15 +24,13 @@ class StructureManager:
             chord_part.append(c)
 
             is_chorus_section = (section_type == "chorus")
-            bass_notes = BassGenerator.generate_bass_part(chord_root, is_chorus=is_chorus_section)
+            bass_notes_list = BassGenerator.generate_bass_part(chord_root, is_chorus=is_chorus_section)
             
-            if isinstance(bass_notes, list):
-                for b_n in bass_notes:
-                    b_n.volume.velocity = int(b_n.volume.velocity * velocity_multiplier)
+            for b_n in bass_notes_list:
+                if b_n is not None:
+                    base_vel = b_n.volume.velocity if b_n.volume.velocity is not None else 80
+                    b_n.volume.velocity = int(base_vel * velocity_multiplier)
                     bass_part.append(b_n)
-            else:
-                bass_notes.volume.velocity = int(random.randint(75, 90) * velocity_multiplier)
-                bass_part.append(bass_notes)
 
             if has_melody:
                 current_bar_length = 0
@@ -66,14 +64,15 @@ class StructureManager:
 
             if has_drums:
                 is_last_bar = (index == len(progression) - 1)
-                
                 if is_last_bar and section_type in ["verse", "chorus"]:
                     drum_notes = DrumGenerator.generate_fill()
                 else:
                     drum_notes = DrumGenerator.generate_standard_beat()
 
                 for drum_note in drum_notes:
-                    drum_note.volume.velocity = int(drum_note.volume.velocity * velocity_multiplier)
-                    drum_part.append(drum_note)
+                    if drum_note is not None:
+                        base_vel = drum_note.volume.velocity if drum_note.volume.velocity is not None else 90
+                        drum_note.volume.velocity = int(base_vel * velocity_multiplier)
+                        drum_part.append(drum_note)
 
         return chord_part, melody_part, bass_part, drum_part
