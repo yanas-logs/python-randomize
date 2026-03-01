@@ -20,6 +20,15 @@ def load_notes():
     with open(os.path.join(PROJECT_ROOT, 'data', 'note', 'note.json'), 'r') as file:
         return json.load(file)
 
+def load_templates():
+    template_path = os.path.join(PROJECT_ROOT, 'data', 'templates', 'intro_progresion.json')
+    try:
+        with open(template_path, 'r') as file:
+            return json.load(file)
+    except Exception as e:
+        print(f"Warning: Could not load templates: {e}")
+        return None
+
 if __name__ == "__main__":
     try:
         notes_data = load_notes()
@@ -44,19 +53,21 @@ if __name__ == "__main__":
         full_drum.append(instrument.Percussion())
 
         song_flow = ["intro", "verse", "chorus", "verse", "chorus", "outro"]
+        templates = load_templates()
 
         for section in song_flow:
             print(f"Generating section: {section}...")
-            prog = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
+            
+            if section == "intro" and templates:
+                category = 'minor' if is_minor else 'major'
+                prog = random.choice(templates[category])
+                print(f"  -> Using template: {prog}")
+            else:
+                prog = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
             
             c_p, m_p, b_p, d_p = StructureManager.create_section(
                 section, prog, root_key, scale_type, MusicTheory, BassGenerator, DrumGenerator
             )
-            
-            for n in c_p: full_chord.append(n)
-            for n in m_p: full_melody.append(n)
-            for n in b_p: full_bass.append(n)
-            for n in d_p: full_drum.append(n)
 
         song.insert(0, full_chord)
         song.insert(0, full_melody)
