@@ -53,18 +53,16 @@ if __name__ == "__main__":
         full_drum.append(instrument.Percussion())
 
         song_flow = ["intro", "verse", "chorus", "verse", "chorus", "outro"]
-        templates = load_templates()
+        templates = load_templates("song_progresion.json")
 
         for section in song_flow:
-            print(f"Generating section: {section}...")
+            category = 'minor' if is_minor else 'major'
             
-            if section == "intro" and templates:
-                category = 'minor' if is_minor else 'major'
-                prog = random.choice(templates[category])
-                print(f"  -> Using template: {prog}")
+            if templates and section in templates:
+                prog = random.choice(templates[section][category])
+                print(f"  -> Using template for {section}: {prog}")
             else:
-                prog = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
-            
+                prog = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)            
             c_p, m_p, b_p, d_p = StructureManager.create_section(
                 section, prog, root_key, scale_type, MusicTheory, BassGenerator, DrumGenerator
             )
