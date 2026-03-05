@@ -1,4 +1,14 @@
 {
+  "intro": {
+    "major": [
+      ["I", "IV", "V", "I"],
+      ["I", "vi", "IV", "V"]
+    ],
+    "minor": [
+      ["i", "VI", "III", "VII"],
+      ["i", "iv", "v", "i"]
+    ]
+  },
   "verse": {
     "major": [
       ["I", "V", "vi", "IV"],
