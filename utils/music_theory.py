@@ -187,6 +187,12 @@ class MusicTheory:
             return chord_notes[:3]
         return chord_notes
 
+    @classmethod
+    def get_chord_notes_indices(cls, chord_root: str, chord_type: str) -> List[int]:
+        root_idx = cls.NOTE_MAP[chord_root.capitalize()]
+        intervals = cls.CHORD_FORMULAS.get(chord_type, [0, 4, 7])
+        return [(root_idx + i) % 12 for i in intervals]
+
 
 class RhythmGenerator:
     """Generator for rhythm patterns"""
