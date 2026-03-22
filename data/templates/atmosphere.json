@@ -1,1 +1,13 @@
 # atmosphere
+{
+  "chill": {
+    "bpm_range": [70, 85],
+    "velocity_range": [40, 65],
+    "voicing": "open"
+  },
+  "energetic": {
+    "bpm_range": [110, 130],
+    "velocity_range": [80, 110],
+    "voicing": "shell"
+  }
+}
