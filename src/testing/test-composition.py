@@ -30,6 +30,11 @@ def load_templates(filename="song_progresion.json"):
     except Exception as e:
         print(f"Warning: {e}")
         return None
+def load_atmosphere(mood="chill"):
+    path = os.path.join(PROJECT_ROOT, 'data', 'templates', 'atmosphere.json')
+    with open(path, 'r') as f:
+        data = json.load(f)
+    return data.get(mood, data["chill"])
 
 if __name__ == "__main__":
     try:
