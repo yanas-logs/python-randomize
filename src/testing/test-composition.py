@@ -30,11 +30,15 @@ def load_templates(filename="song_progresion.json"):
     except Exception as e:
         print(f"Warning: {e}")
         return None
+
 def load_atmosphere(mood="chill"):
     path = os.path.join(PROJECT_ROOT, 'data', 'templates', 'atmosphere.json')
-    with open(path, 'r') as f:
-        data = json.load(f)
-    return data.get(mood, data["chill"])
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+        return data.get(mood, data["chill"])
+    except:
+        return {"bpm_range": [80, 100], "velocity_range": [60, 80]}
 
 if __name__ == "__main__":
     try:
@@ -42,8 +46,15 @@ if __name__ == "__main__":
         root_key = random.choice(list(notes_data.keys()))
         is_minor = random.choice([True, False])
         scale_type = 'minor' if is_minor else 'major'
+        category = scale_type
         
-        print(f"--- Composition: {root_key} {scale_type.capitalize()} ---")
+        moods = ["chill", "energetic"]
+        selected_mood = random.choice(moods)
+        mood_config = load_atmosphere(selected_mood)
+        target_bpm = random.randint(mood_config["bpm_range"][0], mood_config["bpm_range"][1])
+
+        print(f"--- Composition: {root_key} {scale_type.capitalize()} ({selected_mood.upper()}) ---")
+        print(f"--- Tempo: {target_bpm} BPM ---")
 
         song = stream.Score()
         song.metadata = metadata.Metadata(title=f"Modular Composition {root_key}")
@@ -54,24 +65,39 @@ if __name__ == "__main__":
         full_drum = stream.Part()
 
         full_chord.append(instrument.Piano())
-        full_chord.append(tempo.MetronomeMark(number=90))
+        full_chord.append(tempo.MetronomeMark(number=target_bpm))
         full_melody.append(instrument.AcousticGuitar())
         full_bass.append(instrument.ElectricBass())
         full_drum.append(instrument.Percussion())
 
-        song_flow = ["intro", "verse", "chorus", "verse", "chorus", "outro"]
-        templates = load_templates("song_progresion.json")
+        song_flow = ["intro", "verse", "chorus", "verse", "chorus", "bridge", "chorus", "outro"]
+        
+        template_files = {
+            "intro": "intro_progresion.json",
+            "verse": "verse.json",
+            "chorus": "chorus_progresion.json",
+            "bridge": "bridge_progresion.json",
+            "outro": "song_progresion.json"
+        }
 
         for section in song_flow:
             print(f"Generating section: {section}...")
-            category = 'minor' if is_minor else 'major'
             
-            if templates and section in templates and category in templates[section]:
-                prog = random.choice(templates[section][category])
-                print(f"  -> Using template for {section}: {prog}")
-            else:
+            filename = template_files.get(section, "song_progresion.json")
+            templates = load_templates(filename)
+            
+            prog = None
+            if templates:
+                if section in templates and category in templates[section]:
+                    prog = random.choice(templates[section][category])
+                elif category in templates:
+                    prog = random.choice(templates[category])
+
+            if not prog:
                 prog = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
                 print(f"  -> Using random progression: {prog}")
+            else:
+                print(f"  -> Using template for {section}: {prog}")
             
             c_p, m_p, b_p, d_p = StructureManager.create_section(
                 section, prog, root_key, scale_type, MusicTheory, BassGenerator, DrumGenerator
@@ -91,7 +117,7 @@ if __name__ == "__main__":
         if not os.path.exists(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        filename = f"{timestamp}_{root_key}_{scale_type.capitalize()}.mid"
+        filename = f"{timestamp}_{root_key}_{scale_type.capitalize()}_{selected_mood}.mid"
         output_file = os.path.join(OUTPUT_DIR, filename)
         
         song.write('midi', fp=output_file)
