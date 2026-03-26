@@ -1,1 +1,8 @@
-Create template for instrument set
+{
+  "dafault": {
+    "intro": [""],
+    "verse": ["", ""],
+    "chorus": ["", "", "", ""],
+    "outro": [""]
+  }
+}
