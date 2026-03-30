@@ -1,56 +1,132 @@
+import json
+import random
+import sys
 import os
 import time
-import subprocess
-import random
-import uuid
+import argparse
+from music21 import stream, metadata, tempo, instrument
 
-class SessionController:
-    def __init__(self, output_dir="result"):
-        self.output_dir = output_dir
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-        self.is_running = True
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', '..'))
 
-    def generate_new_track(self):
-        seed = str(uuid.uuid4())[:8]
-        print(f"\n[SYSTEM] Generating new track with Seed: {seed}")
-        
-        try:
-            subprocess.run(["python", "src/testing/test-composition.py", "--seed", seed], check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"[ERROR] Generation failed: {e}")
+sys.path.append(PROJECT_ROOT)
+sys.path.append(BASE_DIR)
 
-    def get_latest_midi(self):
-        files = [os.path.join(self.output_dir, f) for f in os.listdir(self.output_dir) if f.endswith('.mid')]
-        if not files:
-            return None
-        return max(files, key=os.path.getctime)
+from utils.music_theory import MusicTheory
+from utils.instrument_manager import InstrumentManager
+from test_bass import BassGenerator
+from test_drum import DrumGenerator
+from structure_manager import StructureManager 
 
-    def play_midi(self, midi_path):
-        if not midi_path:
-            return
-        
-        print(f"[PLAYING] {os.path.basename(midi_path)}")
-        try:
-            subprocess.run(["timidity", midi_path], check=True)
-        except Exception as e:
-            print(f"[ERROR] Playback error: {e}")
+def load_notes():
+    with open(os.path.join(PROJECT_ROOT, 'data', 'note', 'note.json'), 'r') as file:
+        return json.load(file)
 
-    def run_session(self):
-        print("=== PROGRESIVE LIVE SESSION STARTED ===")
-        try:
-            while self.is_running:
-                self.generate_new_track()
-                latest_track = self.get_latest_midi()
-                
-                if latest_track:
-                    self.play_midi(latest_track)
-                
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print("\n[SYSTEM] Session stopped by user.")
-            self.is_running = False
+def load_templates(filename="song_progresion.json"):
+    template_path = os.path.join(PROJECT_ROOT, 'data', 'templates', filename)
+    try:
+        if os.path.exists(template_path):
+            with open(template_path, 'r') as file:
+                return json.load(file)
+        return None
+    except Exception as e:
+        print(f"Warning: {e}")
+        return None
+
+def load_atmosphere(mood="chill"):
+    path = os.path.join(PROJECT_ROOT, 'data', 'templates', 'atmosphere.json')
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+        return data.get(mood, data["chill"])
+    except:
+        return {"bpm_range": [80, 100], "velocity_range": [60, 80]}
 
 if __name__ == "__main__":
-    controller = SessionController()
-    controller.run_session()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=str, default=None)
+    args = parser.parse_args()
+
+    if args.seed:
+        random.seed(args.seed)
+        print(f"--- Seed Locked: {args.seed} ---")
+
+    try:
+        notes_data = load_notes()
+        root_key = random.choice(list(notes_data.keys()))
+        is_minor = random.choice([True, False])
+        scale_type = 'minor' if is_minor else 'major'
+        category = scale_type
+        
+        moods = ["chill", "energetic"]
+        selected_mood = random.choice(moods)
+        mood_config = load_atmosphere(selected_mood)
+        target_bpm = random.randint(mood_config["bpm_range"][0], mood_config["bpm_range"][1])
+
+        print(f"--- Composition: {root_key} {scale_type.capitalize()} ({selected_mood.upper()}) ---")
+        print(f"--- Tempo: {target_bpm} BPM ---")
+
+        song = stream.Score()
+        song.metadata = metadata.Metadata(title=f"Procedural {root_key} {args.seed}")
+        
+        full_chord = stream.Part()
+        full_melody = stream.Part()
+        full_bass = stream.Part()
+        full_drum = stream.Part()
+
+        full_chord.append(instrument.Piano())
+        full_chord.append(tempo.MetronomeMark(number=target_bpm))
+        full_melody.append(instrument.AcousticGuitar())
+        full_bass.append(instrument.ElectricBass())
+        full_drum.append(instrument.Percussion())
+
+        song_flow = ["intro", "verse", "chorus", "verse", "chorus", "bridge", "chorus", "outro"]
+        
+        template_files = {
+            "intro": "intro_progresion.json",
+            "verse": "verse.json",
+            "chorus": "chorus_progresion.json",
+            "bridge": "bridge_progresion.json",
+            "outro": "outro_progresion.json"
+        }
+
+        for section in song_flow:
+            filename = template_files.get(section, "song_progresion.json")
+            templates = load_templates(filename)
+            
+            prog = None
+            if templates:
+                if section in templates and category in templates[section]:
+                    prog = random.choice(templates[section][category])
+                elif category in templates:
+                    prog = random.choice(templates[category])
+
+            if not prog:
+                prog = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
+            
+            c_p, m_p, b_p, d_p = StructureManager.create_section(
+                section, prog, root_key, scale_type, MusicTheory, 
+                BassGenerator, DrumGenerator, InstrumentManager, selected_mood
+            )
+            
+            for n in c_p: full_chord.append(n)
+            for n in m_p: full_melody.append(n)
+            for n in b_p: full_bass.append(n)
+            for n in d_p: full_drum.append(n)
+
+        song.insert(0, full_chord)
+        song.insert(0, full_melody)
+        song.insert(0, full_bass)
+        song.insert(0, full_drum)
+        
+        OUTPUT_DIR = os.path.join(PROJECT_ROOT, "result")
+        if not os.path.exists(OUTPUT_DIR): os.makedirs(OUTPUT_DIR)
+
+        filename = f"{root_key}_{scale_type.capitalize()}_{args.seed if args.seed else 'random'}.mid"
+        output_file = os.path.join(OUTPUT_DIR, filename)
+        
+        song.write('midi', fp=output_file)
+        print(f"SUCCESS: Saved to {output_file}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
