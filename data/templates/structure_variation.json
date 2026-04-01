@@ -1,0 +1,7 @@
+{
+  "standard": ["intro", "verse", "chorus", "verse", "chorus", "bridge", "chorus", "outro"],
+  "short_radio": ["intro", "verse", "chorus", "chorus", "outro"],
+  "extended_jam": ["intro", "verse", "chorus", "verse", "chorus", "bridge", "chorus", "bridge", "chorus", "outro"],
+  "energy_boost": ["intro", "chorus", "verse", "chorus", "verse", "chorus", "outro"],
+  "ambient_loop": ["intro", "verse", "verse", "outro"]
+}
