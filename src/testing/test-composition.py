@@ -14,6 +14,7 @@ sys.path.append(BASE_DIR)
 
 from utils.music_theory import MusicTheory
 from utils.instrument_manager import InstrumentManager
+from utils.overlay_manager import OverlayManager
 from test_bass import BassGenerator
 from test_drum import DrumGenerator
 from structure_manager import StructureManager 
@@ -72,8 +73,28 @@ if __name__ == "__main__":
         mood_config = load_atmosphere(selected_mood)
         target_bpm = random.randint(mood_config["bpm_range"][0], mood_config["bpm_range"][1])
 
+        structures = load_structures()
+        if structures:
+            struct_name = random.choice(list(structures.keys()))
+            song_flow = structures[struct_name]
+        else:
+            struct_name = "standard"
+            song_flow = ["intro", "verse", "chorus", "verse", "chorus", "outro"]
+
+        overlay = OverlayManager()
+        overlay_data = {
+            "seed": current_seed,
+            "key": root_key,
+            "scale": scale_type,
+            "mood": selected_mood,
+            "bpm": target_bpm,
+            "structure": struct_name
+        }
+        overlay.update_metadata(overlay_data)
+
         print(f"--- Seed: {current_seed} ---")
         print(f"--- Composition: {root_key} {scale_type.capitalize()} ({selected_mood.upper()}) ---")
+        print(f"--- Structure: {struct_name.upper()} ---")
         print(f"--- Tempo: {target_bpm} BPM ---")
 
         song = stream.Score()
@@ -89,14 +110,6 @@ if __name__ == "__main__":
         full_melody.append(instrument.AcousticGuitar())
         full_bass.append(instrument.ElectricBass())
         full_drum.append(instrument.Percussion())
-
-        structures = load_structures()
-        if structures:
-            struct_name = random.choice(list(structures.keys()))
-            song_flow = structures[struct_name]
-            print(f"--- Structure: {struct_name.upper()} ---")
-        else:
-            song_flow = ["intro", "verse", "chorus", "verse", "chorus", "outro"]
         
         template_files = {
             "intro": "intro_progresion.json",
@@ -108,7 +121,6 @@ if __name__ == "__main__":
 
         for section in song_flow:
             print(f"Generating section: {section}...")
-            
             filename = template_files.get(section, "song_progresion.json")
             templates = load_templates(filename)
             
@@ -123,7 +135,7 @@ if __name__ == "__main__":
                 prog = MusicTheory.generate_random_progression(length=4, key=root_key, is_minor=is_minor)
                 print(f"  -> Using random progression: {prog}")
             else:
-                print(f"  -> Using template for {section}: {prog}")
+                print(f"  -> Using template: {prog}")
             
             c_p, m_p, b_p, d_p = StructureManager.create_section(
                 section, prog, root_key, scale_type, MusicTheory, 
