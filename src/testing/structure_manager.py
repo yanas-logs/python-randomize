@@ -1,9 +1,10 @@
 import random
 from music21 import stream, instrument, chord, note
+from test_drum import DrumGenerator
 
 class StructureManager:
     @staticmethod
-    def create_section(section_type, progression, root_key, scale_type, MusicTheory, BassGenerator, DrumGenerator, InstrumentManager, mood="chill"):
+    def create_section(section_type, progression, root_key, scale_type, MusicTheory, BassGenerator, DrumGenerator_Param, InstrumentManager, mood="chill", is_last_section=False):
         chord_part = stream.Part()
         melody_part = stream.Part()
         bass_part = stream.Part()
@@ -15,6 +16,8 @@ class StructureManager:
         for index, symbol in enumerate(progression):
             chord_root, chord_type = MusicTheory.parse_roman_numeral(symbol, root_key, is_minor)
             midi_notes = MusicTheory.get_chord(chord_root, chord_type, octave=4)
+            
+            is_last_bar = (index == len(progression) - 1)
             
             if InstrumentManager.should_play("chord", section_type, mood):
                 if section_type in ["verse", "chorus"]:
@@ -59,8 +62,13 @@ class StructureManager:
                         bass_part.append(b_n)
 
             if InstrumentManager.should_play("drum", section_type, mood):
-                is_last_bar = (index == len(progression) - 1)
-                drum_notes = DrumGenerator.generate_fill() if (is_last_bar and section_type == "chorus") else DrumGenerator.generate_standard_beat()
+                if is_last_section and is_last_bar:
+                    drum_notes = DrumGenerator.generate_final_hit()
+                elif is_last_bar and section_type in ["chorus", "bridge"]:
+                    drum_notes = DrumGenerator.generate_fill()
+                else:
+                    drum_notes = DrumGenerator.generate_standard_beat()
+
                 for drum_note in drum_notes:
                     if drum_note is not None:
                         base_vel = drum_note.volume.velocity if drum_note.volume.velocity is not None else 90
