@@ -3,7 +3,9 @@ import json
 
 class OverlayManager:
     def __init__(self, output_file="result/now_playing.txt"):
-        self.output_file = output_file
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.output_file = os.path.join(base_dir, output_file)
+        os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
 
     def update_metadata(self, data):
         try:
